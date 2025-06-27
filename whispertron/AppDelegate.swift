@@ -124,6 +124,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
   // Translated from espanso's injectString function
   func insertStringAtCursor(_ string: String) {
+    logger.debug("insertStringAtCursor: \(string)")
+
     let udelay = UInt32(1000)
 
     DispatchQueue.main.async {
