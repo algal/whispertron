@@ -71,6 +71,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   private var lastTranscript = ""
   private let MinimumTranscriptionDuration = 1.0
   private var audioLevelTimer: Timer?
+  private var settingsWindow: NSWindow?
   func applicationDidFinishLaunching(_ aNotification: Notification) {
     
     DistributedNotificationCenter.default.addObserver(
@@ -254,6 +255,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     menu.addItem(recording)
 
     menu.addItem(NSMenuItem.separator())
+    
+    let settings = NSMenuItem(title: "Settings...", action: #selector(showSettings), keyEquivalent: ",")
+    menu.addItem(settings)
+
+    menu.addItem(NSMenuItem.separator())
 
     menu.addItem(
       NSMenuItem(title: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
@@ -265,6 +271,57 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     if let url = URL(string: "https://www.github.com/lynaghk/whispertron") {
       NSWorkspace.shared.open(url)
     }
+  }
+  
+  @objc func showSettings() {
+    if settingsWindow == nil {
+      createSettingsWindow()
+    }
+    
+    settingsWindow?.makeKeyAndOrderFront(nil)
+    NSApp.activate(ignoringOtherApps: true)
+  }
+  
+  private func createSettingsWindow() {
+    let windowWidth: CGFloat = 400
+    let windowHeight: CGFloat = 200
+    
+    settingsWindow = NSWindow(
+      contentRect: NSRect(x: 0, y: 0, width: windowWidth, height: windowHeight),
+      styleMask: [.titled, .closable],
+      backing: .buffered,
+      defer: false)
+    
+    settingsWindow?.title = "Whispertron Settings"
+    settingsWindow?.center()
+    settingsWindow?.isReleasedWhenClosed = false
+    
+    // Create content view
+    let contentView = NSView(frame: NSRect(x: 0, y: 0, width: windowWidth, height: windowHeight))
+    
+    // Placeholder content
+    let titleLabel = NSTextField(labelWithString: "Hotkey Configuration")
+    titleLabel.font = NSFont.systemFont(ofSize: 16, weight: .medium)
+    titleLabel.frame = NSRect(x: 20, y: windowHeight - 60, width: 200, height: 24)
+    contentView.addSubview(titleLabel)
+    
+    let descriptionLabel = NSTextField(labelWithString: "Current hotkey: ⌃⇧H")
+    descriptionLabel.frame = NSRect(x: 20, y: windowHeight - 90, width: 200, height: 20)
+    contentView.addSubview(descriptionLabel)
+    
+    // Close button
+    let closeButton = NSButton(frame: NSRect(x: windowWidth - 80, y: 20, width: 60, height: 32))
+    closeButton.title = "Close"
+    closeButton.bezelStyle = .rounded
+    closeButton.target = self
+    closeButton.action = #selector(closeSettings)
+    contentView.addSubview(closeButton)
+    
+    settingsWindow?.contentView = contentView
+  }
+  
+  @objc func closeSettings() {
+    settingsWindow?.orderOut(nil)
   }
 
   @objc func didTapStandby() {
