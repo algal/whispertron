@@ -42,7 +42,7 @@ extension NSColor {
   }
 }
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, HotkeyRecorderDelegate {
   private var statusItem: NSStatusItem!
   private var whisperContext: WhisperContext?
   private var recorder: Recorder?
@@ -72,6 +72,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   private let MinimumTranscriptionDuration = 1.0
   private var audioLevelTimer: Timer?
   private var settingsWindow: NSWindow?
+  private var hotkeyRecorderView: HotkeyRecorderView?
   func applicationDidFinishLaunching(_ aNotification: Notification) {
     
     DistributedNotificationCenter.default.addObserver(
@@ -284,7 +285,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
   
   private func createSettingsWindow() {
     let windowWidth: CGFloat = 400
-    let windowHeight: CGFloat = 200
+    let windowHeight: CGFloat = 180
     
     settingsWindow = NSWindow(
       contentRect: NSRect(x: 0, y: 0, width: windowWidth, height: windowHeight),
@@ -299,15 +300,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // Create content view
     let contentView = NSView(frame: NSRect(x: 0, y: 0, width: windowWidth, height: windowHeight))
     
-    // Placeholder content
-    let titleLabel = NSTextField(labelWithString: "Hotkey Configuration")
-    titleLabel.font = NSFont.systemFont(ofSize: 16, weight: .medium)
-    titleLabel.frame = NSRect(x: 20, y: windowHeight - 60, width: 200, height: 24)
+    // Hotkey configuration section
+    let titleLabel = NSTextField(labelWithString: "Recording Hotkey:")
+    titleLabel.frame = NSRect(x: 20, y: windowHeight - 60, width: 120, height: 20)
     contentView.addSubview(titleLabel)
     
-    let descriptionLabel = NSTextField(labelWithString: "Current hotkey: ⌃⇧H")
-    descriptionLabel.frame = NSRect(x: 20, y: windowHeight - 90, width: 200, height: 20)
-    contentView.addSubview(descriptionLabel)
+    // Create and configure hotkey recorder view
+    hotkeyRecorderView = HotkeyRecorderView(frame: NSRect(x: 150, y: windowHeight - 62, width: 200, height: 24))
+    hotkeyRecorderView?.delegate = self
+    
+    // Set initial hotkey to match current app hotkey (Ctrl+Shift+H)
+    let currentHotkey = HotkeyRecorderView.Hotkey(keyCode: 4, modifiers: [.control, .shift])
+    hotkeyRecorderView?.setHotkey(currentHotkey)
+    
+    contentView.addSubview(hotkeyRecorderView!)
     
     // Close button
     let closeButton = NSButton(frame: NSRect(x: windowWidth - 80, y: 20, width: 60, height: 32))
@@ -370,5 +376,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // Visual effect view automatically adapts to system appearance
     // visualEffectView.material = .hudWindow
     feedbackImageView?.contentTintColor = NSColor.isDarkMode ? darkFg : lightFg
+  }
+  
+  // MARK: - HotkeyRecorderDelegate
+  
+  func hotkeyRecorder(_ recorder: HotkeyRecorderView, didRecord hotkey: HotkeyRecorderView.Hotkey) {
+    logger.info("UI recorded hotkey: \(hotkey.displayString)")
+    // TODO: Update global hotkey and save to UserDefaults
+  }
+  
+  func hotkeyRecorderDidCancelRecording(_ recorder: HotkeyRecorderView) {
+    logger.info("Hotkey recording cancelled")
+  }
+  
+  func hotkeyRecorderDidStartRecording(_ recorder: HotkeyRecorderView) {
+    logger.info("Hotkey recording started - disabling global hotkey")
+    // TODO: Temporarily disable global hotkey during recording
+  }
+  
+  func hotkeyRecorderDidStopRecording(_ recorder: HotkeyRecorderView) {
+    logger.info("Hotkey recording stopped - re-enabling global hotkey")
+    // TODO: Re-enable global hotkey
   }
 }
