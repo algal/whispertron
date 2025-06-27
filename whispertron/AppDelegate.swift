@@ -73,6 +73,28 @@ class AppDelegate: NSObject, NSApplicationDelegate, HotkeyRecorderDelegate {
   private var audioLevelTimer: Timer?
   private var settingsWindow: NSWindow?
   private var hotkeyRecorderView: HotkeyRecorderView?
+  
+  // Hotkey persistence
+  private var savedHotkey: HotkeyRecorderView.Hotkey? {
+    get {
+      guard let keyCodeNumber = UserDefaults.standard.object(forKey: "hotkeyKeyCode") as? NSNumber,
+            let modifiersNumber = UserDefaults.standard.object(forKey: "hotkeyModifiers") as? NSNumber else {
+        return nil
+      }
+      let keyCode = keyCodeNumber.uint32Value
+      let modifiers = NSEvent.ModifierFlags(rawValue: modifiersNumber.uintValue)
+      return HotkeyRecorderView.Hotkey(keyCode: keyCode, modifiers: modifiers)
+    }
+    set {
+      if let hotkey = newValue {
+        UserDefaults.standard.set(NSNumber(value: hotkey.keyCode), forKey: "hotkeyKeyCode")
+        UserDefaults.standard.set(NSNumber(value: hotkey.modifiers.rawValue), forKey: "hotkeyModifiers")
+      } else {
+        UserDefaults.standard.removeObject(forKey: "hotkeyKeyCode")
+        UserDefaults.standard.removeObject(forKey: "hotkeyModifiers")
+      }
+    }
+  }
   func applicationDidFinishLaunching(_ aNotification: Notification) {
     
     DistributedNotificationCenter.default.addObserver(
@@ -82,13 +104,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, HotkeyRecorderDelegate {
       object: nil
     )
 
-    self.hotKey = HotKey(key: .h, modifiers: [.control, .shift])
-    hotKey?.keyDownHandler = { [weak self] in
-      self?.didTapRecording()
-    }
-    hotKey?.keyUpHandler = { [weak self] in
-      self?.didTapStandby()
-    }
+    // Initialize hotkey from saved preferences or default
+    let initialHotkey = savedHotkey ?? HotkeyRecorderView.Hotkey(keyCode: 4, modifiers: [.control, .shift]) // Default Ctrl+Shift+H
+    updateGlobalHotkey(initialHotkey)
 
     // Configure audio session
     configureAudioSession()
@@ -309,8 +327,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, HotkeyRecorderDelegate {
     hotkeyRecorderView = HotkeyRecorderView(frame: NSRect(x: 150, y: windowHeight - 62, width: 200, height: 24))
     hotkeyRecorderView?.delegate = self
     
-    // Set initial hotkey to match current app hotkey (Ctrl+Shift+H)
-    let currentHotkey = HotkeyRecorderView.Hotkey(keyCode: 4, modifiers: [.control, .shift])
+    // Set initial hotkey to match current saved hotkey
+    let currentHotkey = savedHotkey ?? HotkeyRecorderView.Hotkey(keyCode: 4, modifiers: [.control, .shift])
     hotkeyRecorderView?.setHotkey(currentHotkey)
     
     contentView.addSubview(hotkeyRecorderView!)
@@ -426,6 +444,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, HotkeyRecorderDelegate {
   
   func hotkeyRecorder(_ recorder: HotkeyRecorderView, didRecord hotkey: HotkeyRecorderView.Hotkey) {
     logger.info("UI recorded hotkey: \(hotkey.displayString)")
+    savedHotkey = hotkey // Save to UserDefaults
     updateGlobalHotkey(hotkey)
   }
   
