@@ -378,11 +378,55 @@ class AppDelegate: NSObject, NSApplicationDelegate, HotkeyRecorderDelegate {
     feedbackImageView?.contentTintColor = NSColor.isDarkMode ? darkFg : lightFg
   }
   
+  // MARK: - Hotkey Management
+  
+  private func updateGlobalHotkey(_ recordedHotkey: HotkeyRecorderView.Hotkey) {
+    // Remove the current hotkey
+    hotKey = nil
+    
+    // Convert NSEvent.ModifierFlags to HotKey.ModifierFlags
+    var modifiers: NSEvent.ModifierFlags = []
+    if recordedHotkey.modifiers.contains(.command) { modifiers.insert(.command) }
+    if recordedHotkey.modifiers.contains(.control) { modifiers.insert(.control) }
+    if recordedHotkey.modifiers.contains(.option) { modifiers.insert(.option) }
+    if recordedHotkey.modifiers.contains(.shift) { modifiers.insert(.shift) }
+    
+    // Use HotKey library's built-in conversion
+    guard let key = Key(carbonKeyCode: recordedHotkey.keyCode) else {
+      logger.error("Unable to convert keyCode \(recordedHotkey.keyCode) to HotKey.Key")
+      return
+    }
+    
+    // Create new hotkey
+    let newHotKey = HotKey(key: key, modifiers: modifiers)
+    newHotKey.keyDownHandler = { [weak self] in
+      self?.didTapRecording()
+    }
+    newHotKey.keyUpHandler = { [weak self] in
+      self?.didTapStandby()
+    }
+    
+    hotKey = newHotKey
+    logger.info("Updated global hotkey to: \(recordedHotkey.displayString)")
+  }
+  
+  private func disableGlobalHotkey() {
+    hotKey = nil
+    logger.info("Global hotkey disabled during recording")
+  }
+  
+  private func enableGlobalHotkey() {
+    // Re-enable with current hotkey from UI
+    if let currentHotkey = hotkeyRecorderView?.getHotkey() {
+      updateGlobalHotkey(currentHotkey)
+    }
+  }
+
   // MARK: - HotkeyRecorderDelegate
   
   func hotkeyRecorder(_ recorder: HotkeyRecorderView, didRecord hotkey: HotkeyRecorderView.Hotkey) {
     logger.info("UI recorded hotkey: \(hotkey.displayString)")
-    // TODO: Update global hotkey and save to UserDefaults
+    updateGlobalHotkey(hotkey)
   }
   
   func hotkeyRecorderDidCancelRecording(_ recorder: HotkeyRecorderView) {
@@ -391,11 +435,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, HotkeyRecorderDelegate {
   
   func hotkeyRecorderDidStartRecording(_ recorder: HotkeyRecorderView) {
     logger.info("Hotkey recording started - disabling global hotkey")
-    // TODO: Temporarily disable global hotkey during recording
+    disableGlobalHotkey()
   }
   
   func hotkeyRecorderDidStopRecording(_ recorder: HotkeyRecorderView) {
     logger.info("Hotkey recording stopped - re-enabling global hotkey")
-    // TODO: Re-enable global hotkey
+    enableGlobalHotkey()
   }
 }
